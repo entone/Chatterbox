@@ -1,5 +1,6 @@
 server {
     listen 0.0.0.0:80;
+    server_name chatterbox.entropealabs.mine.nu;
 
     location / {
         add_header 'Access-Control-Allow-Credentials' 'true';
@@ -13,6 +14,6 @@ server {
     }
 
     location /static {
-        alias /app/app/views/static;
+        alias /home/entone/dev/Chatterbox/chatterbox/views/static;
     }
 }

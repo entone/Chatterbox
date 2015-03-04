@@ -2,9 +2,9 @@ from flask import Blueprint, render_template, flash, request, redirect, url_for,
 from flask.ext.login import login_user, current_user, logout_user
 from flask.views import MethodView
 from pymongo.errors import DuplicateKeyError
-from flaskaws import config
-from flaskaws.models.client import Client, Admin
-from flaskaws.util import password
+from chatterbox import config
+from chatterbox.models.client import Client, Admin
+from chatterbox.util import password
 import logging
 
 auth = Blueprint(

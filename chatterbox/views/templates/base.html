@@ -10,11 +10,11 @@
         <script src="/static/vendor/d3.v3.js"></script>
         <script src="/static/vendor/novus-nvd3-7ebd54c/nv.d3.min.js"></script>
         <script src="/static/js/vendor/jquery.pjax.js"></script>
+        <script src="/static/js/adaptor.js"></script>
         <script src="/static/vendor/jquery-ui-1.11.2.custom/jquery-ui.min.js"></script>
         <link rel="stylesheet" href="/static/vendor/jquery-ui-1.11.2.custom/jquery-ui.min.css">
         <link rel="stylesheet" href="/static/vendor/novus-nvd3-7ebd54c/nv.d3.min.css">
         <link rel="stylesheet" href="/static/css/app.css">
-        <script href="/static/js/app.js"></script>
         {% block head %}{% endblock %}
     </head>
     <body>
@@ -51,7 +51,7 @@
                             <li class="dropdown">
                                 <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
                                     <span class="glyphicon glyphicon-user" aria-hidden="true"></span>
-                                    {{ current_user.name }}
+                                    Hola!
                                     <span class="caret"></span>
                                 </a>
                                 <ul class="dropdown-menu" role="menu">
@@ -83,5 +83,6 @@
             </div>
         </div>
         {% endblock %}
+        <script src="/static/js/app.js"></script>
     </body>
 </html>

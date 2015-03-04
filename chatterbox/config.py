@@ -16,7 +16,7 @@ ES_HOSTS = [{"host":"es", "port":9200},]
 AUTH_SUBDOMAIN = "auth"
 
 SECRET_KEY = "!!zer0K00L!!"
-SERVER_NAME = os.getenv("SERVER_NAME", "app.dev")
+SERVER_NAME = os.getenv("SERVER_NAME", "chatterbox.entropealabs.mine.nu")
 
 SESSION_COOKIE_NAME = "app"
 SESSION_COOKIE_SECURE = False
@@ -38,10 +38,10 @@ LOGGER_NAME = "app"
 JSON_AS_ASCII = False
 
 
-TEMPLATES = "{}/flaskaws/views/templates".format(os.getcwd())
+TEMPLATES = "{}/chatterbox/views/templates".format(os.getcwd())
 
 MONGO_HOST = "mongo"
 MONGO_PORT = 27017
 
-FACEBOOK_APP_ID = os.getenv("FACEBOOK_APP_ID")
-FACEBOOK_APP_SECRET = os.getenv("FACEBOOK_APP_SECRET")
+FACEBOOK_APP_ID = os.getenv("FACEBOOK_APP_ID", "9879879797987")
+FACEBOOK_APP_SECRET = os.getenv("FACEBOOK_APP_SECRET", "987987979797")

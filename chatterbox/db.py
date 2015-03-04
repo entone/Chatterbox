@@ -1,9 +1,9 @@
 from pymongo import MongoClient
 from elasticsearch import Elasticsearch
 from elasticsearch import TransportError
-from flaskaws import config
-from flaskaws import user_mapping
-from flaskaws import influx
+from chatterbox import config
+from chatterbox import user_mapping
+from chatterbox import influx
 import influxdb
 import gevent
 import logging

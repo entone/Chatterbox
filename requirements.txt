@@ -13,3 +13,5 @@ gevent==1.0.1
 influxdb==0.2.0
 slugify==0.0.1
 requests==2.5.1
+flask-socketio-0.5.0
+bunch==1.0.1

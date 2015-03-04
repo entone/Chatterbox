@@ -1,7 +1,7 @@
-from flaskaws.app import App
-from flaskaws import config
-from flaskaws import db
-from flaskaws.insights import INSIGHTS
+from chatterbox.app import App
+from chatterbox import config
+from chatterbox import db
+from chatterbox.insights import INSIGHTS
 from flask_oauth import OAuth
 import urlparse
 import logging
