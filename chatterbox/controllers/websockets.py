@@ -33,17 +33,22 @@ class Room(object):
         clients = ws.handler.server.clients.values()
         moderator = True if len(clients) == 1 else False
         cl = self.add_client(current.ws, moderator=moderator)
-        ev = Bunch(type='event', data={'type':'me', 'room':self.name, 'id':cl.id, 'moderator':moderator})
-        cl.send(ev)
         mod = self.get_moderator()
-        ev.data['type'] = 'joined'
-        mod.send(ev)
+        ev = Bunch(type='event', data={'type':'me', 'room':self.name, 'id':cl.id, 'moderator':mod.id})
+        cl.send(ev)
+        if cl.id != mod.id:
+            ev.data['type'] = 'joined'
+            mod.send(ev)
 
     def run(self, ws):
         while True:
             try:
-                ms = json.loads(ws.receive())
-                self.handle_message(ms)
+                frame = ws.receive()
+                logging.info(frame)
+                try:
+                    ms = json.loads(frame)
+                    self.handle_message(ms)
+                except:pass
             except Exception as e:
                 logging.exception(e)
                 ws.close()

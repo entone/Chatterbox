@@ -1,6 +1,6 @@
 'use strict';
 
-var me;
+var id;
 var room;
 var room_name = 'foo';
 var localVideo = document.getElementById('localVideo');
@@ -54,6 +54,7 @@ function Client(id, moderator, room){
     this.moderator = moderator;
     this.room = room;
     this.pc = this.create_peer_connection();
+    this.peer = null;
 }
 
 Client.prototype.ping = function(){
@@ -63,11 +64,15 @@ Client.prototype.ping = function(){
     }, 30000);
 }
 
-Client.prototype.sendto = function(client, data){
+Client.prototype.set_peer = function(peer){
+    this.peer = peer;
+}
+
+Client.prototype.send = function(data){
     var me = this;
     this.room.socket.send(JSON.stringify({
         _from:me.id,
-        _to:client,
+        _to:me.peer,
         _action:'sendto',
         data:data,
     }));
@@ -83,11 +88,16 @@ Client.prototype.broadcast = function(data){
 }
 
 Client.prototype.create_peer_connection = function(){
-    var pc = new RTCPeerConnection(null);
-    pc.onicecandidate = this.onicecandidate;
+    var pc = new RTCPeerConnection(pc_config, pc_constraints);
+    var me = this;
+    pc.onicecandidate = function(evt){
+        me.onicecandidate(evt);
+    }
     pc.onaddstream = this.onaddstream;
     pc.onremovestream = this.onremovestream;
-    pc.oniceconnectionstatechange = this.oniceconnectionstatechange;
+    pc.oniceconnectionstatechange = function(evt){
+        me.oniceconnectionstatechange(evt);
+    }
     pc.addStream(this.room.stream);
     return pc;
 }
@@ -105,12 +115,27 @@ Client.prototype.onremovestream = function(evt){
 }
 
 Client.prototype.oniceconnectionstatechange = function(evt){
-    console.log(evt);
+    if(evt.currentTarget.iceConnectionState == 'completed'){
+        var peer = this.peer;
+        console.log(this.room.clients);
+        for(var c in this.room.clients){
+            var cli = this.room.clients[c];
+            if(id == cli.moderator){
+                var obj = {
+                    type:'joined',
+                    room:room_name,
+                    id:peer,
+                    moderator:id,
+                };
+                cli.send(obj);
+            }
+        }
+    }
 }
 
 Client.prototype.onicecandidate = function(evt){
     if(evt.candidate) {
-        me.broadcast({
+        this.send({
             type: 'candidate',
             label: evt.candidate.sdpMLineIndex,
             id: evt.candidate.sdpMid,
@@ -121,31 +146,39 @@ Client.prototype.onicecandidate = function(evt){
     }
 }
 
-Client.prototype.call = function(client){
+Client.prototype.has_peer = function(){
+    if(!this.peer) throw "No peer set";
+}
+
+Client.prototype.call = function(){
+    this.has_peer();
     var me = this;
     this.pc.createOffer(function(offer){
         me.pc.setLocalDescription(new RTCSessionDescription(offer), function(){
-            me.sendto(client, offer);
+            me.send(offer);
         }, function(){});
     }, function(){});
 }
 
-Client.prototype.answer = function(client_id, offer){
-    var me = this
+Client.prototype.answer = function(offer){
+    this.has_peer();
+    var me = this;
     this.pc.setRemoteDescription(new RTCSessionDescription(offer), function() {
         me.pc.createAnswer(function(answer) {
             me.pc.setLocalDescription(new RTCSessionDescription(answer), function() {
-                console.log(client_id);
-                console.log(offer);
-                me.sendto(client_id, answer);
+                me.send(answer);
             }, function(){});
         }, function(){});
     }, function(){});
 };
 
+Client.prototype.set_remote_description = function(desc){
+    this.pc.setRemoteDescription(new RTCSessionDescription(desc), function() { }, function() { });
+}
+
 function Room(name, url, stream) {
     this.name = name;
-    this.clients = {};
+    this.clients = [];
     this.socket = null;
     this.url = url;//+"/"+name;
     this.stream = stream;
@@ -157,43 +190,95 @@ Room.prototype.on = function(name, callback){
 }
 
 Room.prototype.add_client = function(client){
-    this.clients[client.id] = client;
+    this.clients.push(client);
 }
 
 Room.prototype.open = function(){
     this.socket = new WebSocket(this.url);
     var room = this;
+    this.socket.on('open', function(evt){
+        setInterval(function(){
+            room.socket.send(JSON.stringify({ping:'pong'}));
+        }, 5000);
+    });
+
     this.socket.on('message', function(message) {
         var evt = JSON.parse(message.data);
         var e = new CustomEvent(evt.data.type, {detail:evt});
         room.socket.dispatchEvent(e);
     });
+
     this.socket.on('error', function(evt) {
         console.log("socket error", evt);
     });
+};
+
+Room.prototype.get_peer = function(id){
+    for(var c in this.clients){
+        var cli = this.clients[c];
+        if(cli.peer == id || cli.moderator == id) return cli;
+    }
+    throw "Peer "+id+" does not exist";
 }
 
 function init_room(room){
     room.socket.on('me', function (evt){
-        me = new Client(evt.detail.data.id, evt.detail.data.moderator, room);
-        console.log(me);
+        id = evt.detail.data.id;
+        var c = new Client(id, evt.detail.data.moderator, room);
+        room.add_client(c);
     });
 
     room.socket.on('joined', function(evt){
-        if(me.id != evt.detail.data.id){
-            console.log("calling: ", evt)
-            me.call(evt.detail.data.id);
+        console.log("Joined:", evt);
+        if(id == evt.detail.data.id) return;
+        var new_peer = true;
+        for(c in room.clients){
+            var cli = room.clients[c];
+            console.log(cli);
+            if(cli.peer == evt.detail.data.id){
+                new_peer = false;
+                break;
+            }
+            if(!cli.peer){
+                cli.set_peer(evt.detail.data.id);
+                new_peer = false;
+                cli.call();
+                break;
+            }
+        }
+        if(new_peer){
+            var c = new Client(id, evt.detail.data.moderator, room);
+            c.set_peer(evt.detail.data.id);
+            room.add_client(c);
+            c.call();
         }
     });
 
     room.socket.on('offer', function(evt){
         console.log("Got Offer", evt);
-        me.answer(evt.detail._from, evt.detail.data);
+        var new_peer = true;
+        var from = evt.detail._from;
+        for(var c in room.clients){
+            var cli = room.clients[c];
+            if(cli.peer == from || cli.moderator == from){
+                cli.set_peer(from);
+                cli.answer(evt.detail.data);
+                new_peer = false;
+                break;
+            }
+        }
+        if(new_peer){
+            var c = new Client(id, evt.detail.data.moderator, room);
+            c.set_peer(from);
+            room.add_client(c);
+            c.answer(evt.detail.data);
+        }
     });
 
     room.socket.on('answer', function(evt){
         console.log("Got Answer:", evt);
-        me.pc.setRemoteDescription(new RTCSessionDescription(evt.detail.data), function() { }, function() { });
+        var peer = room.get_peer(evt.detail._from);
+        peer.set_remote_description(evt.detail.data);
     });
 
     room.socket.on('candidate', function(evt){
@@ -201,6 +286,7 @@ function init_room(room){
             sdpMLineIndex: evt.detail.data.label,
             candidate: evt.detail.data.candidate
         });
-        me.pc.addIceCandidate(candidate);
+        var peer = room.get_peer(evt.detail._from);
+        peer.pc.addIceCandidate(candidate);
     });
 }
