@@ -45,4 +45,7 @@ class Kilo(WebSocketApplication):
 
     def broadcast(self, message):
         for client in self.ws.handler.server.clients.values():
-            client.ws.send(json.dumps(message))
+            try:
+                client.ws.send(json.dumps(message))
+            except Exception as e:
+                logging.error(e)
