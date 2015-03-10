@@ -3,8 +3,25 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="jumbotron">
-    <video id="localVideo" autoplay></video>
-    <div id="remote_videos"></div>
+<div class="row">
+    <div id="videos">
+        <div class="col-md-6">
+            <div class="panel embed-responsive embed-responsive-16by9">
+                <video class="embed-responsive-item" id="localVideo" autoplay></video>
+                <div class="video-info">Me</div>
+            </div>
+        </div>
+    </div>
 </div>
+
+{% raw %}
+<script id="video" type="x-tmpl-mustache">
+    <div class="col-md-6" >
+        <div class="panel embed-responsive embed-responsive-16by9">
+            <video class="embed-responsive-item" src="{{src}}" autoplay></video>
+            <div class="video-info">{{title}}</div>
+        </div>
+    </div>
+</script>
+{% endraw %}
 {% endblock %}

@@ -4,8 +4,8 @@ var id;
 var room;
 var room_name = 'foo';
 var localVideo = document.getElementById('localVideo');
-var videos = document.getElementById('remote_videos');
-var url = "ws://chatterbox.entropealabs.mine.nu/room"
+var videos = document.getElementById('videos');
+var url = "wss://chatterbox.entropealabs.mine.nu/room"
 
 var vid_constraints = {
     mandatory: {
@@ -13,6 +13,7 @@ var vid_constraints = {
         maxWidth: 320
     }
 }
+
 var constraints = { audio: true, video: vid_constraints };
 
 var pc_config = {
@@ -49,9 +50,8 @@ function handleUserMediaError(error){
     console.log('getUserMedia error: ', error);
 }
 
-function Client(id, moderator, room){
+function Client(id, room){
     this.id = id;
-    this.moderator = moderator;
     this.room = room;
     this.pc = this.create_peer_connection();
     this.peer = null;
@@ -93,7 +93,9 @@ Client.prototype.create_peer_connection = function(){
     pc.onicecandidate = function(evt){
         me.onicecandidate(evt);
     }
-    pc.onaddstream = this.onaddstream;
+    pc.onaddstream = function(evt){
+        me.onaddstream(evt);
+    }
     pc.onremovestream = this.onremovestream;
     pc.oniceconnectionstatechange = function(evt){
         me.oniceconnectionstatechange(evt);
@@ -104,10 +106,16 @@ Client.prototype.create_peer_connection = function(){
 
 
 Client.prototype.onaddstream = function(evt){
-    var vid = document.createElement('video');
-    vid.autoplay = true;
-    vid.src = window.URL.createObjectURL(evt.stream);
-    videos.appendChild(vid);
+    var template = $('#video').html();
+    var me = this;
+    console.log("Adding Stream:", this);
+    var rendered = Mustache.render(
+        template, {
+            src: window.URL.createObjectURL(evt.stream),
+            title:me.peer,
+        }
+    );
+    $('#videos').append(rendered);
 }
 
 Client.prototype.onremovestream = function(evt){
@@ -116,8 +124,10 @@ Client.prototype.onremovestream = function(evt){
 
 Client.prototype.oniceconnectionstatechange = function(evt){
     if(evt.currentTarget.iceConnectionState == 'completed'){
-        var peer = this.peer;
+        //var peer = this.peer;
+        console.log(this.peer+" Connection Complete");
         console.log(this.room.clients);
+        /*
         for(var c in this.room.clients){
             var cli = this.room.clients[c];
             if(id == cli.moderator){
@@ -127,9 +137,10 @@ Client.prototype.oniceconnectionstatechange = function(evt){
                     id:peer,
                     moderator:id,
                 };
-                cli.send(obj);
+                //cli.send(obj);
             }
         }
+        */
     }
 }
 
@@ -216,7 +227,7 @@ Room.prototype.open = function(){
 Room.prototype.get_peer = function(id){
     for(var c in this.clients){
         var cli = this.clients[c];
-        if(cli.peer == id || cli.moderator == id) return cli;
+        if(cli.peer == id) return cli;
     }
     throw "Peer "+id+" does not exist";
 }
@@ -224,7 +235,8 @@ Room.prototype.get_peer = function(id){
 function init_room(room){
     room.socket.on('me', function (evt){
         id = evt.detail.data.id;
-        var c = new Client(id, evt.detail.data.moderator, room);
+        console.log(room);
+        var c = new Client(id, room);
         room.add_client(c);
     });
 
@@ -247,7 +259,7 @@ function init_room(room){
             }
         }
         if(new_peer){
-            var c = new Client(id, evt.detail.data.moderator, room);
+            var c = new Client(id, room);
             c.set_peer(evt.detail.data.id);
             room.add_client(c);
             c.call();
@@ -268,7 +280,7 @@ function init_room(room){
             }
         }
         if(new_peer){
-            var c = new Client(id, evt.detail.data.moderator, room);
+            var c = new Client(id, room);
             c.set_peer(from);
             room.add_client(c);
             c.answer(evt.detail.data);

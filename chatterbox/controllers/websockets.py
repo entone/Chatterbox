@@ -8,10 +8,9 @@ from bunch import Bunch
 
 class Client(object):
 
-    def __init__(self, ws, moderator=False):
+    def __init__(self, ws):
         self.id = str(uuid4())
         self.ws = ws
-        self.moderator = moderator
 
     def send(self, data):
         self.ws.send(json.dumps(data))
@@ -22,29 +21,19 @@ class Room(object):
         self.name = name
         self.clients = {}
 
-    def get_moderator(self):
-        for i in self.clients:
-            if self.clients[i].moderator: return self.clients[i]
-
-        return None
-
     def on_connect(self, ws):
         current = ws.handler.active_client
         clients = ws.handler.server.clients.values()
-        moderator = True if len(clients) == 1 else False
-        cl = self.add_client(current.ws, moderator=moderator)
-        mod = self.get_moderator()
-        ev = Bunch(type='event', data={'type':'me', 'room':self.name, 'id':cl.id, 'moderator':mod.id})
+        cl = self.add_client(current.ws)
+        ev = {'type':'event', 'data':{'type':'me', 'room':self.name, 'id':cl.id}}
         cl.send(ev)
-        if cl.id != mod.id:
-            ev.data['type'] = 'joined'
-            mod.send(ev)
+        ev['data']['type'] = 'joined'
+        self.broadcast(cl.id, ev)
 
     def run(self, ws):
         while True:
             try:
                 frame = ws.receive()
-                logging.info(frame)
                 try:
                     ms = json.loads(frame)
                     self.handle_message(ms)
@@ -73,8 +62,8 @@ class Room(object):
             if _from != client:
                 self.clients[client].send(ms)
 
-    def add_client(self, ws, moderator=False):
-        cl = Client(ws=ws, moderator=moderator)
+    def add_client(self, ws):
+        cl = Client(ws=ws)
         self.clients[cl.id] = cl
         return cl
 

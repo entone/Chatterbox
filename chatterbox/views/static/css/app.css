@@ -2,6 +2,18 @@ img.brand{
     height: 100%;
 }
 
+body {
+    padding-top: 70px;
+    margin-bottom: 140px;
+}
+
+.video-info{
+    position:absolute;
+    right: 17px;
+    bottom: 12px;
+    color: #ffffff;
+}
+
 .dash-chart svg {
     height: 400px;
 }
