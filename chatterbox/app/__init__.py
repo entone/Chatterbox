@@ -76,12 +76,10 @@ class App(Flask):
         PJAX(self)
 
     def init_blueprints(self):
-        from controllers.websockets import room
-        from controllers.dashboard import dashboard
-        from controllers.auth import auth
-        from controllers.auth.facebook import facebook
-        from controllers.healthcheck import hc
-        self.sockets.add_url_rule("/room", 'room', room)
+        from chatterbox.controllers.dashboard import dashboard
+        from chatterbox.controllers.auth import auth
+        from chatterbox.controllers.auth.facebook import facebook
+        from chatterbox.controllers.healthcheck import hc
         self.register_blueprint(dashboard)
         self.register_blueprint(auth)
         self.register_blueprint(facebook)

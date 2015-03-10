@@ -1,10 +1,11 @@
 from werkzeug.wsgi import peek_path_info
+from geventwebsocket import Resource
 from chatterbox import config
 from chatterbox.app import App
 from flask_sockets import Sockets
+from chatterbox.app.kilo import Kilo #WebRTC Signalling server
 import logging
 from gevent import monkey
-
 monkey.patch_all()
 
 def create_app():
@@ -22,4 +23,7 @@ def create_app():
     logging.info("Running")
     return app
 
-app = create_app()
+app = Resource({
+    '/': create_app(),
+    '/room': Kilo
+})

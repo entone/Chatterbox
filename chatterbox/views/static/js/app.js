@@ -96,7 +96,9 @@ Client.prototype.create_peer_connection = function(){
     pc.onaddstream = function(evt){
         me.onaddstream(evt);
     }
-    pc.onremovestream = this.onremovestream;
+    pc.onremovestream = function(evt){
+        me.onremovestream(evt);
+    }
     pc.oniceconnectionstatechange = function(evt){
         me.oniceconnectionstatechange(evt);
     }
@@ -109,10 +111,12 @@ Client.prototype.onaddstream = function(evt){
     var template = $('#video').html();
     var me = this;
     console.log("Adding Stream:", this);
+    this.dom_id = "peer"+Math.ceil(Math.random()*100000000);
     var rendered = Mustache.render(
         template, {
             src: window.URL.createObjectURL(evt.stream),
             title:me.peer,
+            id: this.dom_id
         }
     );
     $('#videos').append(rendered);
@@ -120,6 +124,7 @@ Client.prototype.onaddstream = function(evt){
 
 Client.prototype.onremovestream = function(evt){
     console.log(evt);
+    $("#"+this.dom_id).remove();
 }
 
 Client.prototype.oniceconnectionstatechange = function(evt){
@@ -209,7 +214,7 @@ Room.prototype.open = function(){
     var room = this;
     this.socket.on('open', function(evt){
         setInterval(function(){
-            room.socket.send(JSON.stringify({ping:'pong'}));
+            room.socket.send(JSON.stringify({_action:'ping'}));
         }, 5000);
     });
 
@@ -227,9 +232,19 @@ Room.prototype.open = function(){
 Room.prototype.get_peer = function(id){
     for(var c in this.clients){
         var cli = this.clients[c];
-        if(cli.peer == id) return cli;
+        if(cli.peer && (cli.peer.toString() == id.toString())) return cli;
     }
     throw "Peer "+id+" does not exist";
+}
+
+Room.prototype.remove_peer = function(id){
+    for(var c in this.clients){
+        var cli = this.clients[c];
+        if(cli.peer && (cli.peer.toString() == id.toString())){
+            $("#"+cli.dom_id).remove();
+            delete this.clients[c];
+        }
+    }
 }
 
 function init_room(room){
@@ -242,7 +257,7 @@ function init_room(room){
 
     room.socket.on('joined', function(evt){
         console.log("Joined:", evt);
-        if(id == evt.detail.data.id) return;
+        if(id.toString() == evt.detail.data.id.toString()) return;
         var new_peer = true;
         for(c in room.clients){
             var cli = room.clients[c];
@@ -301,4 +316,8 @@ function init_room(room){
         var peer = room.get_peer(evt.detail._from);
         peer.pc.addIceCandidate(candidate);
     });
+
+    room.socket.on('bye', function(evt){
+        room.remove_peer(evt.detail.data.id);
+    })
 }
