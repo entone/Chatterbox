@@ -18,6 +18,8 @@ AUTH_SUBDOMAIN = "auth"
 SECRET_KEY = "!!zer0K00L!!"
 SERVER_NAME = os.getenv("SERVER_NAME", "chatterbox.entropealabs.mine.nu")
 
+WS_URL = SERVER_NAME
+
 SESSION_COOKIE_NAME = "app"
 SESSION_COOKIE_SECURE = False
 SESSION_COOKIE_DOMAIN = ".{}".format(SERVER_NAME)

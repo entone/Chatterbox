@@ -2,26 +2,51 @@
 
 {% block title %}Dashboard{% endblock %}
 
+{%block head %}
+<script>
+    var ws_url = "wss://{{config.WS_URL}}/room";
+    var me;
+</script>
+{% endblock %}
+
 {% block content %}
+{% raw %}
+<div class="col-md-2 side-nav" ng-controller="Room">
+    <ul class="nav nav-stacked">
+        <li ng-repeat="client in room.clients">
+            <a href="#">{{client.peer.toString()}}
+                <span class="label label-default pull-right" title="video chat">
+                    <span class="glyphicon glyphicon-facetime-video"></span>
+                </span>
+                <span class="label label-default pull-right" title="text message">
+                    <span class="glyphicon glyphicon-pencil"></span>
+                </span>
+                <span class="label label-default pull-right" title="send file">
+                    <span class="glyphicon glyphicon-upload"></span>
+                </span>
+            </a>
+        </li>
+    </ul>
+</div>
+<div class="col-md-10">
 <div class="row">
     <div id="videos">
         <div class="col-md-4">
             <div class="panel embed-responsive embed-responsive-16by9">
-                <video class="embed-responsive-item" id="localVideo" autoplay></video>
-                <div class="video-info">Me</div>
+                <video id="{{me.dom_id}}" class="embed-responsive-item" ng-src="{{me.stream}}" controls autoplay></video>
+                <div class="video-info">{{me.id}}</div>
+            </div>
+        </div>
+        <div class="col-md-4" ng-repeat="client in room.clients">
+            <div class="panel embed-responsive embed-responsive-16by9">
+                <video id="{{client.dom_id}}" class="embed-responsive-item" ng-src="{{client.stream}}" autoplay></video>
+                <div class="video-info">{{client.peer}}</div>
             </div>
         </div>
     </div>
 </div>
-
-{% raw %}
-<script id="video" type="x-tmpl-mustache">
-    <div id="{{id}}" class="col-md-4" >
-        <div class="panel embed-responsive embed-responsive-16by9">
-            <video class="embed-responsive-item" src="{{src}}" autoplay></video>
-            <div class="video-info">{{title}}</div>
-        </div>
-    </div>
-</script>
+<div class="row">
+    <video id="recorded_video"></video>
+</div>
 {% endraw %}
 {% endblock %}

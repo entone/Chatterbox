@@ -1,11 +1,8 @@
 'use strict';
 
 var id;
-var room;
-var room_name = 'foo';
-var localVideo = document.getElementById('localVideo');
-var videos = document.getElementById('videos');
-var url = "wss://chatterbox.entropealabs.mine.nu/room"
+var local_stream;
+var recorder;
 
 var vid_constraints = {
     mandatory: {
@@ -18,7 +15,12 @@ var constraints = { audio: true, video: vid_constraints };
 
 var pc_config = {
     'iceServers': [
-        {'url': 'stun:stun.l.google.com:19302'}
+        {url: 'stun:stun.l.google.com:19302'},
+        {
+        	url: 'turn:numb.viagenie.ca',
+        	credential: 'abudabu1',
+        	username: 'entone@gmail.com'
+        }
     ]
 };
 
@@ -36,32 +38,15 @@ var sdpConstraints = {
 };
 
 /////////////////////////////////////////////
-console.log('Getting user media with constraints', constraints);
-getUserMedia(constraints, handleUserMedia, handleUserMediaError);
 
-function handleUserMedia(stream) {
-    console.log('Adding local stream.');
-    localVideo.src = window.URL.createObjectURL(stream);
-    room = new Room(room_name, url, stream);
-    init_room(room);
-}
-
-function handleUserMediaError(error){
-    console.log('getUserMedia error: ', error);
-}
-
-function Client(id, room){
+function Client(id, peer, room, stream){
     this.id = id;
     this.room = room;
-    this.pc = this.create_peer_connection();
-    this.peer = null;
-}
-
-Client.prototype.ping = function(){
-    var me = this;
-    setInterval(function(){
-        me.broadcast({ping:'pong'})
-    }, 30000);
+    if(peer != "me") this.pc = this.create_peer_connection();
+    this.stream = stream;
+    this.peer = peer;
+    this.dom_id = "peer"+Math.ceil(Math.random()*100000000);
+    if(this.stream) this.onaddstream({'stream':stream});
 }
 
 Client.prototype.set_peer = function(peer){
@@ -102,24 +87,16 @@ Client.prototype.create_peer_connection = function(){
     pc.oniceconnectionstatechange = function(evt){
         me.oniceconnectionstatechange(evt);
     }
-    pc.addStream(this.room.stream);
+    //pc.addStream(local_stream);
     return pc;
 }
 
 
 Client.prototype.onaddstream = function(evt){
-    var template = $('#video').html();
     var me = this;
-    console.log("Adding Stream:", this);
-    this.dom_id = "peer"+Math.ceil(Math.random()*100000000);
-    var rendered = Mustache.render(
-        template, {
-            src: window.URL.createObjectURL(evt.stream),
-            title:me.peer,
-            id: this.dom_id
-        }
-    );
-    $('#videos').append(rendered);
+    this.stream = window.URL.createObjectURL(evt.stream);
+    //$("#"+this.dom_id).attr('src', this.stream);
+    this.room.onclient(this);
 }
 
 Client.prototype.onremovestream = function(evt){
@@ -192,13 +169,13 @@ Client.prototype.set_remote_description = function(desc){
     this.pc.setRemoteDescription(new RTCSessionDescription(desc), function() { }, function() { });
 }
 
-function Room(name, url, stream) {
+function Room(name, url) {
     this.name = name;
     this.clients = [];
     this.socket = null;
     this.url = url;//+"/"+name;
-    this.stream = stream;
     this.open();
+    this.init();
 }
 
 Room.prototype.on = function(name, callback){
@@ -247,21 +224,36 @@ Room.prototype.remove_peer = function(id){
     }
 }
 
-function init_room(room){
+Room.prototype.record = function(){
+    /*var mediaRecorder = new MediaStreamRecorder(stream);
+    mediaRecorder.mimeType = 'video/webm';
+    mediaRecorder.width = 320;
+    mediaRecorder.height = 180;
+
+    mediaRecorder.ondataavailable = function (blob) {
+        // POST/PUT "Blob" using FormData/XHR2
+        var blobURL = URL.createObjectURL(blob);
+        var vid = document.getElementById("recorded_video");
+        vid.src = blobURL;
+        vid.play();
+    };
+    mediaRecorder.start(3000);*/
+}
+
+Room.prototype.init = function(){
+    var room = this;
     room.socket.on('me', function (evt){
         id = evt.detail.data.id;
-        console.log(room);
-        var c = new Client(id, room);
-        room.add_client(c);
+        me = new Client(id, "me", room);
+        room.onme(me);
     });
 
     room.socket.on('joined', function(evt){
+        if(me.id.toString() == evt.detail.data.id.toString()) return;
         console.log("Joined:", evt);
-        if(id.toString() == evt.detail.data.id.toString()) return;
         var new_peer = true;
         for(c in room.clients){
             var cli = room.clients[c];
-            console.log(cli);
             if(cli.peer == evt.detail.data.id){
                 new_peer = false;
                 break;
@@ -274,8 +266,7 @@ function init_room(room){
             }
         }
         if(new_peer){
-            var c = new Client(id, room);
-            c.set_peer(evt.detail.data.id);
+            var c = new Client(id, evt.detail.data.id, room);
             room.add_client(c);
             c.call();
         }
@@ -295,8 +286,7 @@ function init_room(room){
             }
         }
         if(new_peer){
-            var c = new Client(id, room);
-            c.set_peer(from);
+            var c = new Client(id, from, room);
             room.add_client(c);
             c.answer(evt.detail.data);
         }

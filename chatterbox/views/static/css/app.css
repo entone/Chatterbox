@@ -18,6 +18,20 @@ body {
     height: 400px;
 }
 
+div.side-nav{
+    padding-left: 0;
+}
+
+div.side-nav ul li{
+    margin-top: 0px;
+    border-bottom: 1px solid #cccccc;
+}
+
+div.side-nav ul li a span.label{
+    margin-right: 3px;
+    padding: 4px;
+}
+
 .form-signin {
     max-width: 330px;
     padding: 15px;
